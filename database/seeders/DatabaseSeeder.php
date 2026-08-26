@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        User::where('email', 'admin@mercys.com')->update(['role' => 'admin']);
+
         $this->call([
             CategorySeeder::class,
             ProductSeeder::class,
