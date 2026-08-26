@@ -140,6 +140,11 @@ class ProductController extends Controller
     public function destroy(int $id)
     {
         $product = Product::findOrFail($id);
+
+        if ($product->image) {
+            $this->deleteImage($product->image);
+        }
+
         $product->delete();
 
         return response()->json([
