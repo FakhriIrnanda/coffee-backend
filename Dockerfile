@@ -1,6 +1,8 @@
-FROM php:8.4-cli
+FROM php:8.4-fpm
 
 RUN apt-get update && apt-get install -y \
+        nginx \
+        gettext-base \
         libpq-dev \
         libzip-dev \
         libonig-dev \
@@ -18,13 +20,15 @@ WORKDIR /app
 COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
+
+COPY docker/nginx.conf.template /etc/nginx/sites-available/default.template
+COPY docker/start.sh /start.sh
+RUN chmod +x /start.sh \
+    && rm -f /etc/nginx/sites-enabled/default \
+    && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 EXPOSE 10000
 
-CMD php artisan migrate --force \
-    && php artisan db:seed --force \
-    && php artisan storage:link --force \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan serve --host 0.0.0.0 --port ${PORT:-10000}
+CMD ["/start.sh"]
