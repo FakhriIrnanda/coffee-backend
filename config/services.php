@@ -42,4 +42,10 @@ return [
     'snap_url' => env('MIDTRANS_SNAP_URL'),
     ],
 
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+    ],
+
 ];

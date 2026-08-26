@@ -4,12 +4,32 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\CloudinaryImageUploader;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
+    private function storeImage(UploadedFile $file): string
+    {
+        if (config('filesystems.default') === 'cloudinary') {
+            return app(CloudinaryImageUploader::class)->store($file);
+        }
+
+        return $file->store('products', config('filesystems.default'));
+    }
+
+    private function deleteImage(string $path): void
+    {
+        if (config('filesystems.default') === 'cloudinary') {
+            app(CloudinaryImageUploader::class)->delete($path);
+            return;
+        }
+
+        Storage::disk(config('filesystems.default'))->delete($path);
+    }
     public function index(Request $request)
     {
         $query = Product::with('category')->where('is_active', true);
@@ -60,7 +80,7 @@ class ProductController extends Controller
 
     $imagePath = null;
     if ($request->hasFile('image')) {
-        $imagePath = $request->file('image')->store('products', 'public');
+        $imagePath = $this->storeImage($request->file('image'));
     }
 
     $product = Product::create([
@@ -80,13 +100,13 @@ class ProductController extends Controller
     ], 201);
 }
 
-    public function show($id)
+    public function show(int $id)
     {
         $product = Product::with('category')->findOrFail($id);
         return response()->json($product);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
 {
     $product = Product::findOrFail($id);
 
@@ -104,9 +124,9 @@ class ProductController extends Controller
     if ($request->hasFile('image')) {
         // Hapus gambar lama
         if ($product->image) {
-            Storage::disk('public')->delete($product->image);
+            $this->deleteImage($product->image);
         }
-        $product->image = $request->file('image')->store('products', 'public');
+        $product->image = $this->storeImage($request->file('image'));
     }
 
     $product->update($request->except('image'));
@@ -117,7 +137,7 @@ class ProductController extends Controller
     ]);
 }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $product = Product::findOrFail($id);
         $product->delete();

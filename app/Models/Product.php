@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\CloudinaryImageUploader;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -17,6 +19,24 @@ class Product extends Model
         'is_active',
         'is_featured',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (!$this->image) {
+            return null;
+        }
+
+        if (config('filesystems.default') === 'cloudinary') {
+            return app(CloudinaryImageUploader::class)->url($this->image);
+        }
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk(config('filesystems.default'));
+
+        return $disk->url($this->image);
+    }
 
     public function category()
     {

@@ -17,7 +17,7 @@ class AdminOrderController extends Controller
         return response()->json($orders);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $order = Order::findOrFail($id);
 

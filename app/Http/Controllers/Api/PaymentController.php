@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Notification;
+use Midtrans\Transaction;
 
 class PaymentController extends Controller
 {
@@ -19,7 +20,7 @@ class PaymentController extends Controller
         Config::$is3ds = true;
     }
 
-    public function createToken(Request $request, $orderId)
+    public function createToken(Request $request, int $orderId)
     {
         $order = Order::with(['user', 'items.product'])
             ->where('user_id', $request->user()->id)
@@ -43,7 +44,7 @@ class PaymentController extends Controller
         ];
     })->toArray(),
     'callbacks' => [
-        'finish' => 'http://localhost:3000/orders/' . $order->id,
+        'finish' => config('services.frontend_url') . '/orders/' . $order->id,
     ],
 ];
 
@@ -89,10 +90,24 @@ class PaymentController extends Controller
         return response()->json(['message' => 'OK']);
     }
 
-    public function markAsPaid(Request $request, $id)
+    public function markAsPaid(Request $request, int $id)
 {
     $order = Order::where('user_id', $request->user()->id)
         ->findOrFail($id);
+
+    /** @var \stdClass $status */
+    $status = Transaction::status($order->order_number);
+    $transactionStatus = $status->transaction_status;
+    $fraudStatus = $status->fraud_status ?? null;
+
+    $isPaid = $transactionStatus === 'settlement'
+        || ($transactionStatus === 'capture' && $fraudStatus !== 'challenge');
+
+    if (!$isPaid) {
+        return response()->json([
+            'message' => 'Payment not verified yet.',
+        ], 422);
+    }
 
     $order->update([
         'payment_status' => 'paid',
